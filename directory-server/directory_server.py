@@ -25,6 +25,7 @@ db = SQLAlchemy(app)
 
 # TODO: Move to models.py file and fix docker
 class Files(db.Model):
+    id = db.Column(db.Integer, index=True, primary_key=True)
     file = db.Column(db.String(64), index=True)
     port = db.Column(db.String(64), index=True)
 
@@ -35,13 +36,13 @@ class Files(db.Model):
 @app.route("/get_file")
 def get_file():
     file_path = request.args.get('file')
-
+    print(file_path, file=sys.stderr)
     # Find server which contains the file
     files = Files.query.filter_by(file=file_path).all()
-
+    print(files, file=sys.stderr)
     if files:
         print("File found", file=sys.stderr)
-        query_params = {"name": file_path}
+        query_params = {"file": file_path}
         response = requests.get("http://{}:{}/get_file".format(FILE_SERVER_IP, files[0].port), params=query_params)
         return response.text, 200
     else:
@@ -59,7 +60,7 @@ def create_file():
         print("Updating file", file=sys.stderr)
         file = files[0]
         # Update file
-        json_file = json.dumps({'name': file_path, 'contents': file_contents})
+        json_file = json.dumps({'file': file_path, 'contents': file_contents})
         headers = {'content-type': 'application/json'}
         response = requests.post("http://{}:{}/create_file".format(FILE_SERVER_IP, file.port), data=json_file, headers=headers)
         return "File updated", 200
@@ -78,7 +79,7 @@ def create_file():
         db.session.add(file_db)
         db.session.commit()
 
-        json_file = json.dumps({'name': file_path, 'contents': file_contents})
+        json_file = json.dumps({'file': file_path, 'contents': file_contents})
         headers = {'content-type': 'application/json'}
         response = requests.post("http://{}:{}/create_file".format(FILE_SERVER_IP, port_num), data=json_file,
                                  headers=headers)
@@ -87,9 +88,18 @@ def create_file():
 
 @app.route("/delete_file", methods=['DELETE'])
 def delete_file():
-    file_name = request.args.get('name')
-    print(Files.query.filter_by(file = file_name), file=sys.stderr)
-    return "test", 200
+    file_path = request.args.get('file')
+
+    # Find server which contains the file
+    files = Files.query.filter_by(file=file_path).all()
+
+    if files:
+        file = files[0]
+        query_params = {"file": file.file}
+        response = requests.delete("http://{}:{}/delete_file".format(FILE_SERVER_IP, file.port), params=query_params)
+        return "File Deleted", 200
+    else:
+        return "File not found", 400
 
 
 def main():
