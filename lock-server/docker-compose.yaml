@@ -1,0 +1,16 @@
+version: "3"
+services:
+  lock-server:
+    volumes:
+      - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/lock-server/'
+    # replace username/repo:tag with your name and image details
+    build: .
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "7000:80"
