@@ -10,16 +10,19 @@ app = Flask(__name__)
 
 @app.route("/get_file")
 def get_file():
-    print("here", file=sys.stderr)
     file = request.args.get('file').split("/", 1)
+    print(file)
     file_name = file[1]
     file_dir = file[0]
-    file = open(FILE_DIR_PATH + file_name, "r")
-    file_contents = file.read()
-    response = json.dumps({'file': file_name, 'contents': file_contents})
-    return response, 200
+    try:
+        file = open(FILE_DIR_PATH + file_name, "r")
+        file_contents = file.read()
+        response = json.dumps({'file': file_dir + "/" + file_name, 'contents': file_contents})
+        return response, 200
+    except Exception as e:
+        return "File not found", 404
 
-@app.route("/create_file", methods=['POST'])
+@app.route("/update_file", methods=['POST'])
 def create_file():
     json_file = request.get_json()
     print(json_file, file=sys.stderr)
