@@ -31,20 +31,26 @@ SERVER_IP = "10.6.64.197"
 FILE_PORT = "9000"
 LOCK_PORT = "7000"
 DIR_PORT = "8001"
+AUTH_PORT = "5005"
 
 CACHE_LIMIT = 100
 
 FILE_DIR_PATH = "./files/"
 
-def download_file(session, file_path):
+def download_file(access_token, session, file_path):
     # Check cache for file
     cache_file = session.query(CachedFile).get(file_path)
     print(cache_file, file=sys.stderr)
     if cache_file:
         print("File in cache")
         query_params = {"file": file_path}
-        response = requests.get("http://{}:{}/get_file_timestamp".format(SERVER_IP, DIR_PORT), params=query_params)
+        print(access_token)
+        headers = {'content-type': 'application/json', 'Authorization': access_token}
+        response = requests.get("http://{}:{}/get_file_timestamp".format(SERVER_IP, DIR_PORT), params=query_params, headers = headers)
         if response.status_code == 404:
+            print(response.text)
+            return
+        if response.status_code == 401:
             print(response.text)
             return
         file_timestamp = response.text
@@ -69,7 +75,8 @@ def download_file(session, file_path):
     else:
         print("File not in cache")
         query_params = {"file": file_path}
-        response = requests.get("http://{}:{}/get_file".format(SERVER_IP, DIR_PORT), params=query_params)
+        headers = {'content-type': 'application/json', 'Authorization': access_token}
+        response = requests.get("http://{}:{}/get_file".format(SERVER_IP, DIR_PORT), params=query_params, headers=headers)
         if response.status_code == 200:
             json_file = json.loads(response.text)
             last_modified = datetime.strptime(json_file['timestamp'], "%Y-%m-%d %H:%M:%S.%f")
@@ -106,7 +113,7 @@ def modify_file(session, file_path, file_contents):
         session.commit()
         return file
 
-def upload_file(session, file):
+def upload_file(access_token, session, file):
     json_file = json.dumps({'file': file.file, 'contents': file.file_contents})
     response = requests.post("http://{}:{}/update_file".format(SERVER_IP, DIR_PORT), data=json_file, headers=JSON_HEADERS)
     print(response)
@@ -131,39 +138,74 @@ def unlock_file(file_path):
     response = requests.put("http://{}:{}/unlock_file".format(SERVER_IP, LOCK_PORT), params=query_params)
     print(response)
 
+def logout(access_token):
+    headers = {'content-type': 'application/json', 'Authorization': access_token}
+    response = requests.put("http://{}:{}/logout".format(SERVER_IP, AUTH_PORT), headers=headers)
+    print(response)
+
 def main():
     # Initialize database for keeping track of cached files
     session = Session()
 
-    # user_id = input("Enter user id")
-    # password = input("Enter password")
-    # json_yser = json.dumps({'file': , 'contents': password})
-    # response = requests.post("http://{}:{}/update_file".format(SERVER_IP, DIR_PORT), data=json_file,
-    #                          headers=JSON_HEADERS)
-
     while True:
-        choice = input("1. Open file \n2. Modify/Create file \n3. Delete file \n4. Lock File \n5. Unlock File \n6. Close program")
-        if(choice == "1"):
-            file_name = input("Enter file path")
-            download_file(session, file_name)
-        elif(choice == "2"):
-            file_name = input("Enter file path")
-            file_contents = input("Enter File Contents")
-            file = modify_file(session, file_name, file_contents)
-            entry_input = input("1. Upload modified file \n2. Return to main menu")
-            if entry_input == "1":
-                upload_file(session, file)
-        elif(choice == "3"):
-            file_name = input("Enter file path")
-            delete_file(session, file_name)
-        elif(choice == "4"):
-            file_name = input("Enter file path")
-            lock_file(file_name)
-        elif (choice == "5"):
-            file_name = input("Enter file path")
-            unlock_file(file_name)
-        elif(choice == "6"):
-            sys.exit()
+
+        # User login
+        while True:
+            choice = input(
+                "1. Register \n2. Login")
+            if choice == "1":
+                user_id = input("Enter user id (Integer)")
+                password = input("Enter password")
+                json_user = json.dumps({'userId': user_id, 'password': password})
+                response = requests.post("http://{}:{}/register".format(SERVER_IP, AUTH_PORT), data=json_user,
+                                        headers=JSON_HEADERS)
+                if response.status_code == 200:
+                    access_token = json.loads(response.text)['token']
+                    break
+                else:
+                    print(response.text)
+                    print("Unable to register user, retry")
+            elif choice == "2":
+                user_id = input("Enter user id")
+                password = input("Enter password")
+                json_user = json.dumps({'userId': user_id, 'password': password})
+                response = requests.put("http://{}:{}/login".format(SERVER_IP, AUTH_PORT), data=json_user,
+                                         headers=JSON_HEADERS)
+                if response.status_code == 200:
+                    access_token = json.loads(response.text)['token']
+                    break
+                else:
+                    print("Incorrect login details, retry")
+
+        print(access_token)
+
+        while True:
+            choice = input("1. Open file \n2. Modify/Create file \n3. Delete file \n4. Lock File \n5. Unlock File \n6. Close program and logout \n7. Close program")
+            if(choice == "1"):
+                file_name = input("Enter file path")
+                download_file(access_token, session, file_name)
+            elif(choice == "2"):
+                file_name = input("Enter file path")
+                file_contents = input("Enter File Contents")
+                file = modify_file(session, file_name, file_contents)
+                entry_input = input("1. Upload modified file \n2. Return to main menu")
+                if entry_input == "1":
+                    upload_file(access_token, session, file)
+            elif(choice == "3"):
+                file_name = input("Enter file path")
+                delete_file(access_token, session, file_name)
+            elif(choice == "4"):
+                file_name = input("Enter file path")
+                lock_file(access_token, file_name)
+            elif (choice == "5"):
+                file_name = input("Enter file path")
+                unlock_file(access_token, file_name)
+            elif (choice == "6"):
+                logout(access_token)
+                # Return to login prompt
+                break
+            elif(choice == "7"):
+                sys.exit()
 
 if __name__ == "__main__":
     main()

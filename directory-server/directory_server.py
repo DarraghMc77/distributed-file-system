@@ -30,10 +30,11 @@ class Files(db.Model):
         return '<File %r>' % (self.file)
 
 def check_authentication(token):
-    token = token.replace("Bearer ", "")
+    print("here", file=sys.stderr)
+    print(token, file=sys.stderr)
     json_token = json.dumps({'token': token})
     headers = {'content-type': 'application/json'}
-    response = request.put("http://{}:{}/update_file".format(IP, AUTH_PORT), data=json_token,
+    response = requests.put("http://{}:{}/authenticate".format(IP, AUTH_PORT), data=json_token,
                                  headers=headers)
     return response.status_code == 200
 
@@ -139,6 +140,10 @@ def delete_file():
 
 @app.route("/get_file_timestamp")
 def get_file_timestamp():
+    # verify user is logged in
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
+    print("authorized", file=sys.stderr)
     file_path = request.args.get('file')
     print(file_path, file=sys.stderr)
     file = Files.query.get(file_path)
