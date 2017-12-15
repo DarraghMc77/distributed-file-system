@@ -40,7 +40,6 @@ FILE_DIR_PATH = "./files/"
 def download_file(headers, session, file_path):
     # Check cache for file
     cache_file = session.query(CachedFile).get(file_path)
-    print(cache_file, file=sys.stderr)
     if cache_file:
         print("File in cache")
         query_params = {"file": file_path}
@@ -116,7 +115,6 @@ def upload_file(headers, session, file):
 
 def delete_file(headers, session, file_path):
     cache_file = session.query(CachedFile).get(file_path)
-    print(cache_file, file=sys.stderr)
     if cache_file:
         session.delete(cache_file)
         session.commit()
@@ -146,8 +144,8 @@ def main():
 
         # User login
         while True:
-            choice = input(
-                "1. Register \n2. Login")
+            choice = input("1. Register \n2. Login")
+            print(choice)
             if choice == "1":
                 user_id = input("Enter user id (Integer)")
                 password = input("Enter password")

@@ -24,6 +24,16 @@ The file server provides the user with access to the files stored on that server
 + delete (delete a file from the file server)
 
 ## Client
+To install dependencies for client:
+```
+chmod +x build.sh
+./build.sh
+```
+To run:
+```
+python3 client.py
+```
+
 When client is started the user is first prompted to login, when successfully logged in, an access token is returned and they are presented with a menu of actions they can complete, this menu includes:
 + open (downloads file for use)
 + close (uploads file to file server)
