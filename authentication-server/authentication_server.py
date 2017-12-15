@@ -8,13 +8,10 @@ import flask_argon2
 import secrets
 from datetime import datetime, timedelta
 
-
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///authentication.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-
 db = SQLAlchemy(app)
 
 class Users(db.Model):

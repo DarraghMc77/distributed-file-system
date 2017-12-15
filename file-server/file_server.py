@@ -22,7 +22,6 @@ def get_file():
 @app.route("/update_file", methods=['POST'])
 def create_file():
     json_file = request.get_json()
-    print(json_file, file=sys.stderr)
     file_path = request.get_json()['file']
     if not os.path.exists(os.path.dirname(FILE_DIR_PATH + file_path)):
         print("creating directory")

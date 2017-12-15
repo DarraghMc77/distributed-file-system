@@ -3,15 +3,16 @@ import json
 import sys
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
-
+import requests
 
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lock.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-
 db = SQLAlchemy(app)
+
+IP = "192.168.0.25"
+AUTH_PORT = 5005
 
 class Lock(db.Model):
     file = db.Column(db.String(64), index=True, primary_key=True)
@@ -20,14 +21,22 @@ class Lock(db.Model):
     def __repr__(self):
         return 'File: %r, Locked: &d' % (self.file, self.locked)
 
+def check_authentication(token):
+    json_token = json.dumps({'token': token})
+    headers = {'content-type': 'application/json'}
+    response = requests.put("http://{}:{}/authenticate".format(IP, AUTH_PORT), data=json_token,
+                                 headers=headers)
+    return response.status_code == 200
 
 @app.route("/lock_file", methods=['PUT'])
 def lock_file():
-    print("here", file=sys.stderr)
+    # verify user is logged in
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
+
     file_path = request.args.get('file')
     file = Lock.query.get(file_path)
     if file:
-        print("File found", file=sys.stderr)
         if file.locked:
             return "File already locked", 200
         else:
@@ -42,6 +51,9 @@ def lock_file():
 
 @app.route("/unlock_file", methods=['PUT'])
 def unlock_file():
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
+
     file_path = request.args.get('file')
     file = Lock.query.get(file_path)
     if file:

@@ -6,10 +6,9 @@ from flask_sqlalchemy import SQLAlchemy
 import string
 import requests
 import datetime
-from functools import wraps
 
 FILE_DIR_PATH = "./files/"
-IP = "10.6.64.197"
+IP = "192.168.0.25"
 SERVERS = [9000, 9001]
 AUTH_PORT = 5005
 LOCK_PORT = 7000
@@ -30,8 +29,6 @@ class Files(db.Model):
         return '<File %r>' % (self.file)
 
 def check_authentication(token):
-    print("here", file=sys.stderr)
-    print(token, file=sys.stderr)
     json_token = json.dumps({'token': token})
     headers = {'content-type': 'application/json'}
     response = requests.put("http://{}:{}/authenticate".format(IP, AUTH_PORT), data=json_token,
@@ -40,17 +37,20 @@ def check_authentication(token):
 
 @app.route("/get_file")
 def get_file():
+    # verify user is logged in
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
+
     file_path = request.args.get('file')
-    print(file_path, file=sys.stderr)
+
     # Find server which contains the file
     file = Files.query.get(file_path)
     print(file, file=sys.stderr)
     if file:
         query_params = {"file": file_path}
+        # check if file is locked
         file_lock = requests.get("http://{}:{}/is_file_locked".format(IP, LOCK_PORT), params=query_params)
-        print(file_lock, file=sys.stderr)
         if file_lock.status_code == 200:
-            print("File found", file=sys.stderr)
             query_params = {"file": file_path}
             response = requests.get("http://{}:{}/get_file".format(IP, file.port), params=query_params)
             file_json = json.loads(response.text)
@@ -67,12 +67,14 @@ def get_file():
 
 @app.route("/update_file", methods=['POST'])
 def update_file():
-    print("here", file=sys.stderr)
+    # verify user is logged in
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
+
     file = request.get_json()
-    print(file, file=sys.stderr)
     file_path = file['file']
     file_contents = file['contents']
-    print("Creating new file", file=sys.stderr)
+    file_timestamp = datetime.strptime(file['timestamp'], "%Y-%m-%d %H:%M:%S.%f")
 
     # Check if file exists
     file = Files.query.get(file_path)
@@ -82,7 +84,7 @@ def update_file():
         if file_lock.status_code == 200:
             print("Updating file", file=sys.stderr)
             # Update file
-            file.last_modified = datetime.datetime.now()
+            file.last_modified = file_timestamp
             db.session.commit()
 
             json_file = json.dumps({'file': file_path, 'contents': file_contents})
@@ -93,7 +95,6 @@ def update_file():
             return "File is locked", 401
     else:
         print("Creating new file", file=sys.stderr)
-        # Create new file
 
         # directories beginning with a - m are assigned to server 9000
         # directories beginning with n - z are assigned to server 9001
@@ -102,7 +103,7 @@ def update_file():
         else:
             port_num = SERVERS[1]
 
-        file_db = Files(file=file_path, port=port_num, last_modified=datetime.datetime.now())
+        file_db = Files(file=file_path, port=port_num, last_modified=file_timestamp)
         db.session.add(file_db)
         db.session.commit()
 
@@ -115,9 +116,11 @@ def update_file():
 
 @app.route("/delete_file", methods=['DELETE'])
 def delete_file():
-    file_path = request.args.get('file')
-    print(file_path, file=sys.stderr)
+    # verify user is logged in
+    if not check_authentication(request.headers.get('Authorization')):
+        return "Unauthorized", 401
 
+    file_path = request.args.get('file')
     # Find server which contains the file
     file = Files.query.get(file_path)
 
@@ -143,11 +146,8 @@ def get_file_timestamp():
     # verify user is logged in
     if not check_authentication(request.headers.get('Authorization')):
         return "Unauthorized", 401
-    print("authorized", file=sys.stderr)
     file_path = request.args.get('file')
-    print(file_path, file=sys.stderr)
     file = Files.query.get(file_path)
-    print(file, file=sys.stderr)
     if file:
         return str(file.last_modified), 200
     else:
