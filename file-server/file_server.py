@@ -26,11 +26,12 @@ def get_file():
 def create_file():
     json_file = request.get_json()
     print(json_file, file=sys.stderr)
-    file = request.get_json()['file'].split("/", 1)
-    file_name = file[1]
-    file_dir = file[0]
+    file_path = request.get_json()['file']
+    if not os.path.exists(os.path.dirname(FILE_DIR_PATH + file_path)):
+        print("creating directory")
+        os.makedirs(os.path.dirname(FILE_DIR_PATH + file_path))
     contents = json_file['contents']
-    file = open(FILE_DIR_PATH + file_name, "w+")
+    file = open(FILE_DIR_PATH + file_path, "w+")
     file.write(contents)
     file.close()
     return "File Created", 200

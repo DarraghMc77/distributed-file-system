@@ -6,22 +6,19 @@ from flask_sqlalchemy import SQLAlchemy
 import string
 import requests
 import datetime
+from functools import wraps
 
 FILE_DIR_PATH = "./files/"
 IP = "10.6.64.197"
 SERVERS = [9000, 9001]
-
 
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///directory.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-
 db = SQLAlchemy(app)
 
-
-# TODO: Move to models.py file and fix docker
 class Files(db.Model):
     file = db.Column(db.String(64), index=True, primary_key=True)
     port = db.Column(db.String(64), index=True)
@@ -29,6 +26,28 @@ class Files(db.Model):
 
     def __repr__(self):
         return '<File %r>' % (self.file)
+
+def check_auth(username, password):
+    """This function is called to check if a username /
+    password combination is valid.
+    """
+    return username == 'admin' and password == 'secret'
+
+def authenticate():
+    """Sends a 401 response that enables basic auth"""
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 401,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 
 
 @app.route("/get_file")
@@ -113,7 +132,8 @@ def delete_file():
         file_lock = requests.get("http://{}:{}/get_file".format(IP, file.port), params=query_params)
         if file_lock.status_code == 200:
             # Delete from directory
-
+            file.delete()
+            db.session.commit()
 
             # Delete from file server
             query_params = {"file": file.file}
