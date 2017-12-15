@@ -7,15 +7,14 @@ Distributed file system project for module CS7NS1, Scalable Computing, based on 
 + Security
 
 ### Usage
-To build docker services specified in docker-compose.yml file:
+To build docker services specified in docker-compose.yml file, replace SERVER_IP value in yml file with your IPv4 address and run:
 ```
 docker-compose build
 ```
-To run services:
+To run all services:
 ```
 docker-compose up
 ```
-Repeat this for each service.
 
 ## File Server
 The file server provides the user with access to the files stored on that server. Functionality of the file server I have implemented includes:
@@ -29,7 +28,7 @@ To install dependencies for client:
 chmod +x build.sh
 ./build.sh
 ```
-To run:
+To run, replace SERVER_IP value at top of file with your IPv4 address and run:
 ```
 python3 client.py
 ```

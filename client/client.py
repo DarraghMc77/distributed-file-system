@@ -6,10 +6,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
+SERVER_IP = "192.168.0.25"
+
 engine = create_engine('sqlite:///cached_files.db', echo=True)
-
 Base = declarative_base()
-
 Session = sessionmaker(bind=engine)
 
 class CachedFile(Base):
@@ -26,8 +26,6 @@ class CachedFile(Base):
 Base.metadata.create_all(engine)
 
 JSON_HEADERS = {'content-type': 'application/json'}
-SERVER_IP = "192.168.0.25"
-
 FILE_PORT = "9000"
 LOCK_PORT = "7000"
 DIR_PORT = "8001"
@@ -52,13 +50,14 @@ def download_file(headers, session, file_path):
             return
         file_timestamp = response.text
         dir_last_modified = datetime.strptime(file_timestamp, "%Y-%m-%d %H:%M:%S.%f")
-        if dir_last_modified == cache_file.last_modified:
+        if dir_last_modified != cache_file.last_modified:
             print("Up to date file in cache")
         else:
             query_params = {"file": file_path}
             response = requests.get("http://{}:{}/get_file".format(SERVER_IP, DIR_PORT), params=query_params, headers = headers)
             if response.status_code == 200:
                 json_file = json.loads(response.text)
+                print(json_file['contents'])
 
                 # update caching db
                 cache_file.last_modified = dir_last_modified

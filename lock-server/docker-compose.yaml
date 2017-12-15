@@ -3,8 +3,9 @@ services:
   lock-server:
     volumes:
       - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/lock-server/'
-    # replace username/repo:tag with your name and image details
     build: .
+    environment:
+          - SERVER_IP=192.168.0.25
     deploy:
       resources:
         limits:

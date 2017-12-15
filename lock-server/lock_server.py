@@ -4,6 +4,7 @@ import sys
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import requests
+import os
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lock.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-IP = "192.168.0.25"
+IP = os.getenv('SERVER_IP')
 AUTH_PORT = 5005
 
 class Lock(db.Model):

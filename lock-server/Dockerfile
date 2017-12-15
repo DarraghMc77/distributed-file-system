@@ -1,16 +1,16 @@
 FROM python:3.6.1
 
-WORKDIR /Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/lock-server/
-ADD . /Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/lock-server/
+RUN mkdir -p /app/
+WORKDIR /app/
 
 # add requirements (to leverage Docker cache)
-ADD ./requirements.txt requirements.txt
+ADD ./requirements.txt /app/
 
 # install requirements
 RUN pip install -r requirements.txt
 
 # add app
-ADD lock_server.py /
+ADD . /app/
 
 # run server
 CMD [ "python3", "-u", "lock_server.py" ]

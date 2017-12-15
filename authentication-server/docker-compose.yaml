@@ -4,6 +4,8 @@ services:
     volumes:
       - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/authentication-server/'
     build: .
+    environment:
+          - SERVER_IP=192.168.0.25
     deploy:
       resources:
         limits:

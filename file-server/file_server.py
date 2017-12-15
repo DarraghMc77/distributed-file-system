@@ -1,7 +1,6 @@
 from __future__ import print_function
 from flask import Flask, request
 import json
-import sys
 import os
 
 FILE_DIR_PATH = "./files/"

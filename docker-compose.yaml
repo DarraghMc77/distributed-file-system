@@ -1,0 +1,73 @@
+version: "3"
+services:
+  file_server1:
+    volumes:
+      - './file-server:/app/'
+    build: ./file-server
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "9000:80"
+  file_server2:
+    volumes:
+      - './file-server:/app/'
+    build: ./file-server
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "9001:80"
+  authentication-server:
+    volumes:
+      - './authentication-server:/app/'
+    build: ./authentication-server
+    environment:
+          - SERVER_IP=192.168.0.25
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "5005:80"
+  directory-server:
+    volumes:
+      - './directory-server:/app/'
+    build: ./directory-server
+    environment:
+          - SERVER_IP=192.168.0.25
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "8001:80"
+  lock-server:
+    volumes:
+      - './lock-server:/app/'
+    build: ./lock-server
+    environment:
+          - SERVER_IP=192.168.0.25
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 50M
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "7000:80"

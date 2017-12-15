@@ -5,10 +5,11 @@ from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 import string
 import requests
-import datetime
+from datetime import datetime
+import os
 
 FILE_DIR_PATH = "./files/"
-IP = "192.168.0.25"
+IP = os.getenv('SERVER_IP')
 SERVERS = [9000, 9001]
 AUTH_PORT = 5005
 LOCK_PORT = 7000
