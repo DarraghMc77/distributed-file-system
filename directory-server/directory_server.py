@@ -11,6 +11,8 @@ from functools import wraps
 FILE_DIR_PATH = "./files/"
 IP = "10.6.64.197"
 SERVERS = [9000, 9001]
+AUTH_PORT = 5005
+LOCK_PORT = 7000
 
 app = Flask(__name__)
 
@@ -27,28 +29,13 @@ class Files(db.Model):
     def __repr__(self):
         return '<File %r>' % (self.file)
 
-def check_auth(username, password):
-    """This function is called to check if a username /
-    password combination is valid.
-    """
-    return username == 'admin' and password == 'secret'
-
-def authenticate():
-    """Sends a 401 response that enables basic auth"""
-    return Response(
-    'Could not verify your access level for that URL.\n'
-    'You have to login with proper credentials', 401,
-    {'WWW-Authenticate': 'Basic realm="Login Required"'})
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
-
+def check_authentication(token):
+    token = token.replace("Bearer ", "")
+    json_token = json.dumps({'token': token})
+    headers = {'content-type': 'application/json'}
+    response = request.put("http://{}:{}/update_file".format(IP, AUTH_PORT), data=json_token,
+                                 headers=headers)
+    return response.status_code == 200
 
 @app.route("/get_file")
 def get_file():
@@ -59,7 +46,8 @@ def get_file():
     print(file, file=sys.stderr)
     if file:
         query_params = {"file": file_path}
-        file_lock = requests.get("http://{}:{}/get_file".format(IP, file.port), params=query_params)
+        file_lock = requests.get("http://{}:{}/is_file_locked".format(IP, LOCK_PORT), params=query_params)
+        print(file_lock, file=sys.stderr)
         if file_lock.status_code == 200:
             print("File found", file=sys.stderr)
             query_params = {"file": file_path}
@@ -71,12 +59,16 @@ def get_file():
 
             json_file = json.dumps(file_json)
             return json_file, 200
+        else:
+            return "File is locked", 401
     else:
         return "File not found", 404
 
 @app.route("/update_file", methods=['POST'])
 def update_file():
+    print("here", file=sys.stderr)
     file = request.get_json()
+    print(file, file=sys.stderr)
     file_path = file['file']
     file_contents = file['contents']
     print("Creating new file", file=sys.stderr)
@@ -85,7 +77,7 @@ def update_file():
     file = Files.query.get(file_path)
     if file:
         query_params = {"file": file_path}
-        file_lock = requests.get("http://{}:{}/get_file".format(IP, file.port), params=query_params)
+        file_lock = requests.get("http://{}:{}/is_file_locked".format(IP, LOCK_PORT), params=query_params)
         if file_lock.status_code == 200:
             print("Updating file", file=sys.stderr)
             # Update file
@@ -118,27 +110,28 @@ def update_file():
         response = requests.post("http://{}:{}/update_file".format(IP, port_num), data=json_file,
                                  headers=headers)
 
-        return "File Created", 200
+        return response.text, 200
 
 @app.route("/delete_file", methods=['DELETE'])
 def delete_file():
     file_path = request.args.get('file')
+    print(file_path, file=sys.stderr)
 
     # Find server which contains the file
     file = Files.query.get(file_path)
 
     if file:
         query_params = {"file": file_path}
-        file_lock = requests.get("http://{}:{}/get_file".format(IP, file.port), params=query_params)
+        file_lock = requests.get("http://{}:{}/is_file_locked".format(IP, LOCK_PORT), params=query_params)
         if file_lock.status_code == 200:
             # Delete from directory
-            file.delete()
+            db.session.delete(file)
             db.session.commit()
 
             # Delete from file server
             query_params = {"file": file.file}
             response = requests.delete("http://{}:{}/delete_file".format(IP, file.port), params=query_params)
-            return "File Deleted", 200
+            return response.text, 200
         else:
             return "File is locked", 401
     else:
@@ -148,7 +141,6 @@ def delete_file():
 def get_file_timestamp():
     file_path = request.args.get('file')
     print(file_path, file=sys.stderr)
-    # Find server which contains the file
     file = Files.query.get(file_path)
     print(file, file=sys.stderr)
     if file:
@@ -158,7 +150,7 @@ def get_file_timestamp():
 
 
 def main():
-    # db.drop_all()
+    db.drop_all()
     db.create_all()
     db.session.commit()
 

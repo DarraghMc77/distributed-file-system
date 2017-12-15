@@ -23,12 +23,13 @@ class Lock(db.Model):
 
 @app.route("/lock_file", methods=['PUT'])
 def lock_file():
+    print("here", file=sys.stderr)
     file_path = request.args.get('file')
     file = Lock.query.get(file_path)
     if file:
         print("File found", file=sys.stderr)
         if file.locked:
-            return "File already locked", 400
+            return "File already locked", 200
         else:
             file.locked = 1
             db.session.commit()
@@ -66,7 +67,6 @@ def check_lock():
             return "File is unlocked", 200
     else:
         return "File is unlocked", 200
-
 
 def main():
     db.drop_all()

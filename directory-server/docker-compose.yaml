@@ -3,7 +3,6 @@ services:
   directory-server:
     volumes:
       - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/directory-server/'
-    # replace username/repo:tag with your name and image details
     build: .
     deploy:
       resources:

@@ -10,14 +10,11 @@ app = Flask(__name__)
 
 @app.route("/get_file")
 def get_file():
-    file = request.args.get('file').split("/", 1)
-    print(file)
-    file_name = file[1]
-    file_dir = file[0]
+    file_path = request.args.get('file')
     try:
-        file = open(FILE_DIR_PATH + file_name, "r")
+        file = open(FILE_DIR_PATH + file_path, "r")
         file_contents = file.read()
-        response = json.dumps({'file': file_dir + "/" + file_name, 'contents': file_contents})
+        response = json.dumps({'file': file_path, 'contents': file_contents})
         return response, 200
     except Exception as e:
         return "File not found", 404
@@ -38,10 +35,8 @@ def create_file():
 
 @app.route("/delete_file", methods=['DELETE'])
 def delete_file():
-    file = request.args.get('file').split("/", 1)
-    file_name = file[1]
-    file_dir = file[0]
-    os.remove(FILE_DIR_PATH + file_name)
+    file_path = request.args.get('file')
+    os.remove(FILE_DIR_PATH + file_path)
     return "File Deleted", 200
 
 def main():

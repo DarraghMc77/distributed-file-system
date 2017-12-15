@@ -25,14 +25,14 @@ class CachedFile(Base):
 
 Base.metadata.create_all(engine)
 
-
+JSON_HEADERS = {'content-type': 'application/json'}
 SERVER_IP = "10.6.64.197"
 
 FILE_PORT = "9000"
 LOCK_PORT = "7000"
 DIR_PORT = "8001"
 
-CACHE_LIMIT = 1
+CACHE_LIMIT = 100
 
 FILE_DIR_PATH = "./files/"
 
@@ -44,6 +44,9 @@ def download_file(session, file_path):
         print("File in cache")
         query_params = {"file": file_path}
         response = requests.get("http://{}:{}/get_file_timestamp".format(SERVER_IP, DIR_PORT), params=query_params)
+        if response.status_code == 404:
+            print(response.text)
+            return
         file_timestamp = response.text
         print(file_timestamp)
         dir_last_modified = datetime.strptime(file_timestamp, "%Y-%m-%d %H:%M:%S.%f")
@@ -60,12 +63,6 @@ def download_file(session, file_path):
                 cache_file.file_contents = json_file['contents']
                 session.commit()
 
-                file_name = json_file['file'].split("/", 1)[1]
-
-                # contents = json_file['contents']
-                # file = open(FILE_DIR_PATH + file_name, "w+")
-                # file.write(contents)
-                # file.close()
                 print("File downloaded")
             else:
                 print(response.text)
@@ -91,35 +88,34 @@ def download_file(session, file_path):
             session.add(cache_file)
             session.commit()
 
-            # file_name = json_file['file'].split("/", 1)[1]
-
-            # contents = json_file['contents']
-            # file = open(FILE_DIR_PATH + file_name, "w+")
-            # file.write(contents)
-            # file.close()
             print("File downloaded")
         else:
             print(response.text)
 
 
-def edit_file(session, file_path, file_contents):
+def modify_file(session, file_path, file_contents):
     file = session.query(CachedFile).get(file_path)
-    file.file_content = file_contents
-    file.last_modified = datetime.now()
-    session.commit()
-    return file
+    if file:
+        file.file_content = file_contents
+        file.last_modified = datetime.now()
+        session.commit()
+        return file
+    else:
+        file = CachedFile(file=file_path, file_contents=file_contents, last_modified = datetime.now())
+        session.add(file)
+        session.commit()
+        return file
 
 def upload_file(session, file):
-    json_file = json.dumps({'file': file.file, 'contents': file.file_contents, 'timestamp': file.last_modified})
-    headers = {'content-type': 'application/json'}
-    response = requests.post("http://{}:{}/update_file".format(SERVER_IP, DIR_PORT, data=json_file, headers=headers))
+    json_file = json.dumps({'file': file.file, 'contents': file.file_contents})
+    response = requests.post("http://{}:{}/update_file".format(SERVER_IP, DIR_PORT), data=json_file, headers=JSON_HEADERS)
     print(response)
 
 def delete_file(session, file_path):
     cache_file = session.query(CachedFile).get(file_path)
     print(cache_file, file=sys.stderr)
     if cache_file:
-        cache_file.delete()
+        session.delete(cache_file)
         session.commit()
     query_params = {"file": file_path}
     response = requests.delete("http://{}:{}/delete_file".format(SERVER_IP, DIR_PORT), params=query_params)
@@ -139,16 +135,22 @@ def main():
     # Initialize database for keeping track of cached files
     session = Session()
 
+    # user_id = input("Enter user id")
+    # password = input("Enter password")
+    # json_yser = json.dumps({'file': , 'contents': password})
+    # response = requests.post("http://{}:{}/update_file".format(SERVER_IP, DIR_PORT), data=json_file,
+    #                          headers=JSON_HEADERS)
+
     while True:
-        choice = input("1. Download file \n2. Edit file \n3. Delete file \n4. Lock File \n5. Unlock File \n6. Close program")
+        choice = input("1. Open file \n2. Modify/Create file \n3. Delete file \n4. Lock File \n5. Unlock File \n6. Close program")
         if(choice == "1"):
             file_name = input("Enter file path")
             download_file(session, file_name)
         elif(choice == "2"):
             file_name = input("Enter file path")
             file_contents = input("Enter File Contents")
-            file = edit_file(session, file_name, file_contents)
-            entry_input = input("1. Upload modified file \n2. Return to ain memnu")
+            file = modify_file(session, file_name, file_contents)
+            entry_input = input("1. Upload modified file \n2. Return to main menu")
             if entry_input == "1":
                 upload_file(session, file)
         elif(choice == "3"):

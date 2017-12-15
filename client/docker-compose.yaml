@@ -2,8 +2,7 @@ version: "3"
 services:
   file_server:
     volumes:
-      - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/file-server/'
-    # replace username/repo:tag with your name and image details
+      - '.:/Users/Darragh/College/ScalableComputing/py_dfs/distibuted-file-system/client/'
     build: .
     deploy:
       resources:

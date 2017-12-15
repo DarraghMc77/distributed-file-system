@@ -10,7 +10,8 @@ ADD ./requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 # add app
-ADD file_server.py /
+ADD client.py /
 
 # run server
-CMD [ "python3", "-u", "file_server.py" ]
+# run server
+CMD python client.py
